@@ -19,10 +19,10 @@ Size-based pruning eliminates ~80% of pairs before Jaccard comparison.
 
 ```
 lua tools/quality/dry.lua [options] [file-or-directory ...]
-luajit tools/quality/dry.lua [options] [file-or-directory ...]
+lua5.4 tools/quality/dry.lua [options] [file-or-directory ...]
 ```
 
-LuaJIT is ~6x faster due to JIT-compiled hash table iteration.
+Project tooling standardizes on Lua 5.4 for this repository.
 
 ## Options
 
