@@ -10,6 +10,7 @@ Options:
   --threshold N   Minimum structural similarity score, default 0.82
   --min-lines N   Minimum source lines in a candidate function, default 4
   --min-nodes N   Minimum normalized token count, default 20
+  --limit N       Maximum text duplicate rows to print, 0 means no limit
   --json          Output in JSON format
   --text          Output in text format (default)
   --help          Show this help message]]
@@ -18,18 +19,30 @@ local function format_location(entry)
   return entry.file .. ":" .. entry.start_line .. "-" .. entry.end_line
 end
 
-local function format_text(candidates)
+local function format_text(candidates, limit)
   if #candidates == 0 then
     print("No duplicate candidates found.")
     return
   end
-  for index, candidate in ipairs(candidates) do
+  local printed = #candidates
+  if limit ~= nil and limit > 0 and limit < printed then
+    printed = limit
+  end
+  for index = 1, printed do
+    local candidate = candidates[index]
     if index > 1 then
       io.write("\n")
     end
     io.write(string.format("DUPLICATE score=%.2f\n", candidate.score))
     io.write("  " .. format_location(candidate.left) .. "  " .. candidate.left.name .. "\n")
     io.write("  " .. format_location(candidate.right) .. "  " .. candidate.right.name .. "\n")
+  end
+  if printed < #candidates then
+    io.write(string.format(
+      "\nShowing %d of %d duplicate candidates. Use --limit 0 to show all.\n",
+      printed,
+      #candidates
+    ))
   end
 end
 
@@ -65,6 +78,7 @@ local VALUE_OPTIONS = {
   ["--threshold"] = "threshold",
   ["--min-lines"] = "min_lines",
   ["--min-nodes"] = "min_nodes",
+  ["--limit"] = "limit",
 }
 
 function cli.parse_args(args)
@@ -73,6 +87,7 @@ function cli.parse_args(args)
     threshold = 0.82,
     min_lines = 4,
     min_nodes = 20,
+    limit = nil,
     format = "text",
     help = false,
   }
@@ -91,6 +106,10 @@ function cli.parse_args(args)
       local number = tonumber(args[index])
       if not number then
         io.stderr:write("Error: " .. arg_value .. " requires a numeric value\n")
+        os.exit(2)
+      end
+      if arg_value == "--limit" and number < 0 then
+        io.stderr:write("Error: --limit must be zero or greater\n")
         os.exit(2)
       end
       options[VALUE_OPTIONS[arg_value]] = number
@@ -118,7 +137,7 @@ function cli.run(args)
   if options.format == "json" then
     format_json(candidates)
   else
-    format_text(candidates)
+    format_text(candidates, options.limit)
   end
   return 0
 end

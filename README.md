@@ -31,6 +31,7 @@ Project tooling standardizes on Lua 5.4 for this repository.
 | `--threshold N` | 0.82 | Minimum structural similarity score (0.0-1.0) |
 | `--min-lines N` | 4 | Minimum source lines in a candidate function |
 | `--min-nodes N` | 20 | Minimum normalized token count |
+| `--limit N` | unlimited | Maximum text duplicate rows to print; `0` means unlimited |
 | `--json` | | Output in JSON format |
 | `--text` | | Output in text format (default) |
 
