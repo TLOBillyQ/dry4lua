@@ -42,3 +42,29 @@ DUPLICATE score=0.89
   src/gameplay/dice.lua:12-25  roll_dice
   src/gameplay/movement.lua:30-44  advance_player
 ```
+
+## Development
+
+Run the test suite (pure Lua, no dependencies):
+
+```
+lua5.4 tests/run.lua
+```
+
+Run the full behavior check — unit tests, CLI output diff against the
+baseline in `tests/baseline/`, and a syntax check of all sources:
+
+```
+sh tests/check.sh
+```
+
+Run the benchmark (repeated `find_duplicates` over the frozen corpus in
+`tests/corpus/` and `tests/fixtures/`):
+
+```
+lua5.4 tests/bench.lua 500
+```
+
+The baseline captures the CLI output of the original implementation on the
+frozen corpus, so refactors and optimizations can prove they did not change
+behavior.

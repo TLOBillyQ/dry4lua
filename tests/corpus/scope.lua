@@ -25,13 +25,12 @@ local function function_name(tokens, index)
   return table.concat(parts)
 end
 
--- A "do" only opens its own block when it is a standalone "do ... end".
--- The "do" closing a for/while header belongs to that loop's block; since
--- anything opened inside the header (e.g. an anonymous function) is closed
--- before the "do" arrives, the enclosing loop is then at the stack top.
-local function should_push_do(stack)
-  local top = stack[#stack]
-  return not (top and (top.kind == "for" or top.kind == "while"))
+local function should_push_do(tokens, index)
+  local prev = tokens[index - 1]
+  if not prev then
+    return true
+  end
+  return not block_starters[prev.value]
 end
 
 function scope.extract(tokens)
@@ -49,7 +48,7 @@ function scope.extract(tokens)
       elseif block_starters[token.value] then
         stack[#stack + 1] = { kind = token.value }
       elseif token.value == "do" then
-        if should_push_do(stack) then
+        if should_push_do(tokens, index) then
           stack[#stack + 1] = { kind = "do" }
         end
       elseif token.value == "repeat" then

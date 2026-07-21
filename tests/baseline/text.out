@@ -1,0 +1,3 @@
+DUPLICATE score=1.00
+  tests/fixtures/dup_a.lua:1-10  calculate_total
+  tests/fixtures/dup_b.lua:1-10  compute_sum

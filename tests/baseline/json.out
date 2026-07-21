@@ -1,0 +1,1 @@
+{"candidates":[{"score":1.0000,"left":{"file":"tests/fixtures/dup_a.lua","name":"calculate_total","start_line":1,"end_line":10},"right":{"file":"tests/fixtures/dup_b.lua","name":"compute_sum","start_line":1,"end_line":10}}]}

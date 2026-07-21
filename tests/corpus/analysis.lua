@@ -9,34 +9,23 @@ local DEFAULT_OPTIONS = {
   min_nodes = 20,
 }
 
-local PLACEHOLDERS = {
-  identifier = "_ID",
-  number = "_NUM",
-  string = "_STR",
-}
-
 local function normalize_tokens(tokens, scope)
   local normalized = {}
-  -- Tokens are position-ordered: binary-search the first token that can
-  -- fall inside the scope, then scan until past its end.
-  local lo, hi = 1, #tokens
-  while lo < hi do
-    local mid = (lo + hi) // 2
-    if tokens[mid].start_pos < scope.start_pos then
-      lo = mid + 1
-    else
-      hi = mid
-    end
-  end
-  for i = lo, #tokens do
-    local tok = tokens[i]
-    if tok.start_pos > scope.end_pos then
-      break
-    end
-    -- lo is the first token with start_pos >= scope.start_pos and positions
-    -- are ordered, so only the end needs checking here.
-    if tok.end_pos <= scope.end_pos then
-      normalized[#normalized + 1] = PLACEHOLDERS[tok.type] or tok.value
+  for _, tok in ipairs(tokens) do
+    if tok.start_pos >= scope.start_pos and tok.end_pos <= scope.end_pos then
+      local value
+      if tok.type == "keyword" or tok.type == "symbol" then
+        value = tok.value
+      elseif tok.type == "identifier" then
+        value = "_ID"
+      elseif tok.type == "number" then
+        value = "_NUM"
+      elseif tok.type == "string" then
+        value = "_STR"
+      end
+      if value then
+        normalized[#normalized + 1] = value
+      end
     end
   end
   return normalized
@@ -45,21 +34,10 @@ end
 local function build_fingerprints(normalized)
   local fps = {}
   local count = 0
-  local n = #normalized
-  local max_window = math.min(7, n)
-  -- Build window keys incrementally: key(w+1) = key(w) .. " " .. next token.
-  for i = 1, n - 2 do
-    local key = normalized[i] .. " " .. normalized[i + 1] .. " " .. normalized[i + 2]
-    if not fps[key] then
-      fps[key] = true
-      count = count + 1
-    end
-    for window = 4, max_window do
-      local stop = i + window - 1
-      if stop > n then
-        break
-      end
-      key = key .. " " .. normalized[stop]
+  local max_window = math.min(7, #normalized)
+  for window = 3, max_window do
+    for i = 1, #normalized - window + 1 do
+      local key = table.concat(normalized, " ", i, i + window - 1)
       if not fps[key] then
         fps[key] = true
         count = count + 1
@@ -69,20 +47,20 @@ local function build_fingerprints(normalized)
   return fps, count
 end
 
--- Jaccard similarity: |intersection| / |union|, iterating the smaller set.
--- count_a / count_b are the precomputed fingerprint set sizes.
-local function jaccard(fps_a, count_a, fps_b, count_b)
-  local small, big = fps_a, fps_b
-  if count_a > count_b then
-    small, big = fps_b, fps_a
-  end
+local function jaccard(fps_a, fps_b)
   local intersection = 0
-  for k in pairs(small) do
-    if big[k] then
+  local union = 0
+  for k in pairs(fps_a) do
+    union = union + 1
+    if fps_b[k] then
       intersection = intersection + 1
     end
   end
-  local union = count_a + count_b - intersection
+  for k in pairs(fps_b) do
+    if not fps_a[k] then
+      union = union + 1
+    end
+  end
   if union == 0 then
     return 0
   end
@@ -119,12 +97,14 @@ end
 
 local function collect_files(paths)
   local files = {}
-  local handle = io.popen("find " .. table.concat(paths, " ") .. " -name '*.lua' -type f 2>/dev/null")
-  if handle then
-    for line in handle:lines() do
-      files[#files + 1] = line
+  for _, path in ipairs(paths) do
+    local handle = io.popen("find " .. path .. " -name '*.lua' -type f 2>/dev/null")
+    if handle then
+      for line in handle:lines() do
+        files[#files + 1] = line
+      end
+      handle:close()
     end
-    handle:close()
   end
   table.sort(files)
   return files
@@ -144,17 +124,8 @@ function analysis.find_duplicates(options)
     scan_file(path, entries, scan_opts)
   end
 
-  -- Sort by fingerprint count for size-based pruning; break ties
-  -- deterministically so equal-count entries (and thus the left/right
-  -- orientation of candidate pairs) do not depend on table.sort internals.
   table.sort(entries, function(a, b)
-    if a.fp_count ~= b.fp_count then
-      return a.fp_count < b.fp_count
-    end
-    if a.file ~= b.file then
-      return a.file < b.file
-    end
-    return a.start_line < b.start_line
+    return a.fp_count < b.fp_count
   end)
 
   local candidates = {}
@@ -165,7 +136,7 @@ function analysis.find_duplicates(options)
       if a.fp_count / b.fp_count < threshold then
         break
       end
-      local score = jaccard(a.fingerprints, a.fp_count, b.fingerprints, b.fp_count)
+      local score = jaccard(a.fingerprints, b.fingerprints)
       if score >= threshold then
         candidates[#candidates + 1] = {
           score = score,
