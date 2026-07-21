@@ -3,8 +3,8 @@ local analysis = require("dry4lua.analysis")
 local cli = {}
 
 local USAGE = [[
-Usage: lua tools/quality/dry.lua [options] [file-or-directory ...]
-       lua5.4 tools/quality/dry.lua [options] [file-or-directory ...]
+Usage: dry4lua [options] [file-or-directory ...]
+       lua5.4 bin/dry4lua [options] [file-or-directory ...]
 
 Options:
   --threshold N   Minimum structural similarity score, default 0.82

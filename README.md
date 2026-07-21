@@ -18,11 +18,38 @@ Size-based pruning eliminates ~80% of pairs before Jaccard comparison.
 ## Usage
 
 ```
-lua tools/quality/dry.lua [options] [file-or-directory ...]
-lua5.4 tools/quality/dry.lua [options] [file-or-directory ...]
+bin/dry4lua [options] [file-or-directory ...]
+lua5.4 bin/dry4lua [options] [file-or-directory ...]
 ```
 
-Project tooling standardizes on Lua 5.4 for this repository.
+`bin/dry4lua` is a self-contained entrypoint: it only sets `package.path`
+to the repository's `lib/` and calls `dry4lua.cli`. Project tooling
+standardizes on Lua 5.4 for this repository.
+
+## Using dry4lua in a new project
+
+dry4lua has no dependencies and no project-specific configuration, so any
+project can adopt it as-is. Example: a project called `eggy`.
+
+1. Vendor the repository into your project, e.g. as a git submodule or a
+   pinned toolcache checkout at `eggy/vendor/dry4lua/`.
+2. Run the entrypoint against your sources:
+
+   ```
+   lua5.4 vendor/dry4lua/bin/dry4lua src
+   ```
+
+   Or put the entrypoint on your `PATH` (`export PATH="$PWD/vendor/dry4lua/bin:$PATH"`)
+   and simply call `dry4lua src`.
+3. Alternatively, use it as a library from your own tooling:
+
+   ```lua
+   package.path = "vendor/dry4lua/lib/?.lua;" .. package.path
+   local cli = require("dry4lua.cli")
+   os.exit(cli.run(arg))
+   ```
+
+Options, defaults, and output formats are identical in all three modes.
 
 ## Options
 

@@ -13,11 +13,11 @@ TEXT_OUT=$(mktemp)
 JSON_OUT=$(mktemp)
 trap 'rm -f "$TEXT_OUT" "$JSON_OUT"' EXIT
 
-$LUA tools/quality/dry.lua tests/corpus tests/fixtures > "$TEXT_OUT"
-$LUA tools/quality/dry.lua --json tests/corpus tests/fixtures > "$JSON_OUT"
+$LUA bin/dry4lua tests/corpus tests/fixtures > "$TEXT_OUT"
+$LUA bin/dry4lua --json tests/corpus tests/fixtures > "$JSON_OUT"
 diff tests/baseline/text.out "$TEXT_OUT"
 diff tests/baseline/json.out "$JSON_OUT"
 
-$LUAC -p lib/dry4lua/*.lua tools/quality/dry.lua tests/*.lua tests/fixtures/*.lua tests/corpus/*.lua
+$LUAC -p lib/dry4lua/*.lua bin/dry4lua tests/*.lua tests/fixtures/*.lua tests/corpus/*.lua
 
 echo "CHECK OK"
