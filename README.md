@@ -6,10 +6,13 @@ Lua equivalent of [dry4go](https://github.com/unclebob/dry4go) and [dry4clj](htt
 
 ## How it works
 
-1. Tokenize each Lua source file
-2. Extract function scopes
-3. Normalize tokens within each scope (strip identifier names, literal values; keep keywords, operators, control flow)
-4. Build structural fingerprints using sliding windows (size 3-7)
+1. Parse each Lua source file with [luacheck](https://github.com/lunarmodules/luacheck)
+2. Extract function scopes from the AST
+3. Normalize each function's subtree: identifiers become `ident`, literals become
+   `literal/<KIND>`, function-call callees become `callee`, operators stay in the
+   tag (e.g. `op/add`), and keyword tags are unchanged
+4. Build structural fingerprints as the set of all serialized normalized subtrees
+   (s-expression style: `(tag child1 child2 ...)`)
 5. Compare all candidate pairs using Jaccard similarity over fingerprint sets
 6. Report pairs that exceed the threshold
 
@@ -28,10 +31,7 @@ repo (`projects/luatools/docs/adr/`).
 - Default parameters `threshold 0.82 / min-lines 4 / min-nodes 20` and the
   option set.
 - Fingerprints = the set of serialized normalized subtrees; similarity =
-  Jaccard. (Landing in progress on this branch: replacing the original
-  sliding-window 3-7 fingerprints, the only fingerprint-strategy deviation
-  across all upstream versions — ADR-0001. Requires a real Lua AST, which is
-  why luacheck becomes a runtime dependency via LuaRocks.)
+  Jaccard.
 - Detection unit = function scope (structurally identical to dry4go's
   `FuncDecl`).
 - Text output skeleton (`DUPLICATE score=%.2f` + two `file:start-end` lines,
@@ -60,12 +60,15 @@ standardizes on Lua 5.4 for this repository.
 
 ## Using dry4lua in a new project
 
-dry4lua has no dependencies and no project-specific configuration, so any
-project can adopt it as-is. Example: a project called `eggy`.
+1. Install luacheck (runtime dependency):
 
-1. Vendor the repository into your project, e.g. as a git submodule or a
+   ```
+   luarocks install luacheck
+   ```
+
+2. Vendor the repository into your project, e.g. as a git submodule or a
    pinned toolcache checkout at `eggy/vendor/dry4lua/`.
-2. Run the entrypoint against your sources:
+3. Run the entrypoint against your sources:
 
    ```
    lua5.4 vendor/dry4lua/bin/dry4lua src
@@ -73,7 +76,7 @@ project can adopt it as-is. Example: a project called `eggy`.
 
    Or put the entrypoint on your `PATH` (`export PATH="$PWD/vendor/dry4lua/bin:$PATH"`)
    and simply call `dry4lua src`.
-3. Alternatively, use it as a library from your own tooling:
+4. Alternatively, use it as a library from your own tooling:
 
    ```lua
    package.path = "vendor/dry4lua/lib/?.lua;" .. package.path
@@ -89,7 +92,7 @@ Options, defaults, and output formats are identical in all three modes.
 |------|---------|-------------|
 | `--threshold N` | 0.82 | Minimum structural similarity score (0.0-1.0) |
 | `--min-lines N` | 4 | Minimum source lines in a candidate function |
-| `--min-nodes N` | 20 | Minimum normalized token count |
+| `--min-nodes N` | 20 | Minimum AST node count in a candidate function |
 | `--limit N` | unlimited | Maximum text duplicate rows to print; `0` means unlimited |
 | `--json` | | Output in JSON format |
 | `--text` | | Output in text format (default) |
@@ -104,7 +107,13 @@ DUPLICATE score=0.89
 
 ## Development
 
-Run the test suite (pure Lua, no dependencies):
+Install the runtime dependency:
+
+```
+luarocks install luacheck
+```
+
+Run the test suite:
 
 ```
 lua5.4 tests/run.lua
@@ -124,6 +133,7 @@ Run the benchmark (repeated `find_duplicates` over the frozen corpus in
 lua5.4 tests/bench.lua 500
 ```
 
-The baseline captures the CLI output of the original implementation on the
-frozen corpus, so refactors and optimizations can prove they did not change
-behavior.
+The baseline captures the CLI output of the implementation on the frozen
+corpus. It was regenerated when the fingerprint strategy moved from token
+sliding-windows to serialized normalized AST subtrees; in this corpus the
+reported duplicate pair and score remained identical.

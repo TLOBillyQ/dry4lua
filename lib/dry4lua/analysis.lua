@@ -1,5 +1,4 @@
-local lexer = require("dry4lua.lexer")
-local scope_mod = require("dry4lua.scope")
+local ast = require("dry4lua.ast")
 
 local analysis = {}
 
@@ -9,76 +8,14 @@ local DEFAULT_OPTIONS = {
   min_nodes = 20,
 }
 
-local PLACEHOLDERS = {
-  identifier = "_ID",
-  number = "_NUM",
-  string = "_STR",
-}
-
-local function normalize_tokens(tokens, scope)
-  local normalized = {}
-  -- Tokens are position-ordered: binary-search the first token that can
-  -- fall inside the scope, then scan until past its end.
-  local lo, hi = 1, #tokens
-  while lo < hi do
-    local mid = (lo + hi) // 2
-    if tokens[mid].start_pos < scope.start_pos then
-      lo = mid + 1
-    else
-      hi = mid
-    end
-  end
-  for i = lo, #tokens do
-    local tok = tokens[i]
-    if tok.start_pos > scope.end_pos then
-      break
-    end
-    -- lo is the first token with start_pos >= scope.start_pos and positions
-    -- are ordered, so only the end needs checking here.
-    if tok.end_pos <= scope.end_pos then
-      normalized[#normalized + 1] = PLACEHOLDERS[tok.type] or tok.value
-    end
-  end
-  return normalized
-end
-
-local function build_fingerprints(normalized)
-  local fps = {}
-  local count = 0
-  local n = #normalized
-  local max_window = math.min(7, n)
-  -- Build window keys incrementally: key(w+1) = key(w) .. " " .. next token.
-  for i = 1, n - 2 do
-    local key = normalized[i] .. " " .. normalized[i + 1] .. " " .. normalized[i + 2]
-    if not fps[key] then
-      fps[key] = true
-      count = count + 1
-    end
-    for window = 4, max_window do
-      local stop = i + window - 1
-      if stop > n then
-        break
-      end
-      key = key .. " " .. normalized[stop]
-      if not fps[key] then
-        fps[key] = true
-        count = count + 1
-      end
-    end
-  end
-  return fps, count
-end
-
--- Jaccard similarity: |intersection| / |union|, iterating the smaller set.
--- count_a / count_b are the precomputed fingerprint set sizes.
 local function jaccard(fps_a, count_a, fps_b, count_b)
   local small, big = fps_a, fps_b
   if count_a > count_b then
     small, big = fps_b, fps_a
   end
   local intersection = 0
-  for k in pairs(small) do
-    if big[k] then
+  for key in pairs(small) do
+    if big[key] then
       intersection = intersection + 1
     end
   end
@@ -87,34 +24,6 @@ local function jaccard(fps_a, count_a, fps_b, count_b)
     return 0
   end
   return intersection / union
-end
-
-local function scan_file(path, entries, options)
-  local file = io.open(path, "r")
-  if not file then
-    return
-  end
-  local source = file:read("*a")
-  file:close()
-  local tokens = lexer.tokenize(source)
-  local scopes = scope_mod.extract(tokens)
-  for _, scope in ipairs(scopes) do
-    local line_count = scope.end_line - scope.start_line + 1
-    if line_count >= options.min_lines then
-      local normalized = normalize_tokens(tokens, scope)
-      if #normalized >= options.min_nodes then
-        local fps, fp_count = build_fingerprints(normalized)
-        entries[#entries + 1] = {
-          file = path,
-          name = scope.name,
-          start_line = scope.start_line,
-          end_line = scope.end_line,
-          fingerprints = fps,
-          fp_count = fp_count,
-        }
-      end
-    end
-  end
 end
 
 local function collect_files(paths)
@@ -128,6 +37,32 @@ local function collect_files(paths)
   end
   table.sort(files)
   return files
+end
+
+local function scan_file(path, entries, options)
+  local chunk, err = ast.parse_file(path)
+  if not chunk then
+    return
+  end
+  local functions = ast.extract_functions(chunk)
+  for _, entry in ipairs(functions) do
+    local line_count = entry.end_line - entry.start_line + 1
+    if line_count >= options.min_lines then
+      local node_count = ast.count_nodes(entry.node)
+      if node_count >= options.min_nodes then
+        local normalized = ast.normalize_node(entry.node)
+        local fingerprints, fp_count = ast.build_fingerprints(normalized)
+        entries[#entries + 1] = {
+          file = path,
+          name = entry.name,
+          start_line = entry.start_line,
+          end_line = entry.end_line,
+          fingerprints = fingerprints,
+          fp_count = fp_count,
+        }
+      end
+    end
+  end
 end
 
 function analysis.find_duplicates(options)
@@ -144,9 +79,6 @@ function analysis.find_duplicates(options)
     scan_file(path, entries, scan_opts)
   end
 
-  -- Sort by fingerprint count for size-based pruning; break ties
-  -- deterministically so equal-count entries (and thus the left/right
-  -- orientation of candidate pairs) do not depend on table.sort internals.
   table.sort(entries, function(a, b)
     if a.fp_count ~= b.fp_count then
       return a.fp_count < b.fp_count

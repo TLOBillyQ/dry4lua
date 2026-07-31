@@ -3,6 +3,11 @@ local script = arg[0] or "tests/run.lua"
 ROOT = script:match("^(.+)/tests/run%.lua$") or "."
 package.path = ROOT .. "/lib/?.lua;" .. package.path
 
+local luacheck_dir = os.getenv("LUACHECK_DIR")
+if luacheck_dir then
+  package.path = luacheck_dir .. "/?.lua;" .. luacheck_dir .. "/?/init.lua;" .. package.path
+end
+
 local passed = 0
 local failed = 0
 local failures = {}
@@ -32,8 +37,7 @@ function assert_true(value, label)
 end
 
 local suites = {
-  "tests/test_lexer.lua",
-  "tests/test_scope.lua",
+  "tests/test_ast.lua",
   "tests/test_analysis.lua",
   "tests/test_cli.lua",
 }

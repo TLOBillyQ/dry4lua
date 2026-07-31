@@ -28,7 +28,7 @@ test("analysis: threshold above 1 yields nothing", function()
   assert_eq(#candidates, 0)
 end)
 
-test("analysis: min_nodes filters small functions", function()
+test("analysis: min_nodes filters by AST node count", function()
   local candidates = analysis.find_duplicates({
     paths = { FIXTURES },
     min_nodes = 1000,

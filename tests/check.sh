@@ -6,6 +6,12 @@ set -e
 LUADIR=${LUADIR:-/opt/homebrew/opt/lua@5.4/bin}
 LUA=${LUA:-$LUADIR/lua5.4}
 LUAC=${LUAC:-$LUADIR/luac5.4}
+LUACHECK_DIR=${LUACHECK_DIR:-/opt/homebrew/Cellar/luacheck/1.2.0_1/libexec/share/lua/5.4}
+
+if [ -d "$LUACHECK_DIR" ]; then
+  LUA_PATH="$LUACHECK_DIR/?.lua;$LUACHECK_DIR/?/init.lua;$($LUA -e 'print(package.path)')"
+  export LUA_PATH
+fi
 
 $LUA tests/run.lua
 

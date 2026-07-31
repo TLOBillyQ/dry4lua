@@ -9,7 +9,7 @@ Usage: dry4lua [options] [file-or-directory ...]
 Options:
   --threshold N   Minimum structural similarity score, default 0.82
   --min-lines N   Minimum source lines in a candidate function, default 4
-  --min-nodes N   Minimum normalized token count, default 20
+  --min-nodes N   Minimum AST node count in a candidate function, default 20
   --limit N       Maximum text duplicate rows to print, 0 means no limit
   --json          Output in JSON format
   --text          Output in text format (default)
