@@ -3,7 +3,7 @@ package = "dry4lua"
 version = "0.1.0-1"
 source = {
    url = "git+http://lzxsvn:3000/qinyuanj/dry4lua.git",
-   branch = "main",
+   tag = "v0.1.0",
 }
 description = {
    summary = "Structural duplication detector for Lua",
@@ -17,10 +17,10 @@ description = {
 }
 dependencies = {
    "lua >= 5.4",
-   "luacheck >= 1.1.0",
+   "luacheck == 1.2.0-1",
 }
 test_dependencies = {
-   "luaunit >= 3.4",
+   "luaunit == 3.5-1",
 }
 build = {
    type = "builtin",
