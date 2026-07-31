@@ -51,6 +51,12 @@ repo (`projects/luatools/docs/adr/`).
   emit EDN) — CI/tooling consumption.
 - Extra `--limit` option for text output.
 - File collection delegates to external `find`.
+- Nested functions collapse to a `(function)` leaf inside a parent's
+  fingerprints (in addition to the upstream-aligned `overlaps` pair exclusion).
+  Upstream dry4java leaves child bodies in the parent fingerprint and relies
+  on `overlaps` alone, which can match structurally-different parents that
+  merely share identical inner functions; the collapse prevents that
+  cross-file false positive (see "How it works").
 
 ## Usage
 
