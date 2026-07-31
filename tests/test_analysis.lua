@@ -1,57 +1,60 @@
+local lu = require("luaunit")
 local analysis = require("dry4lua.analysis")
+
+TestAnalysis = {}
 
 local FIXTURES = ROOT .. "/tests/fixtures"
 
-test("analysis: finds the structurally identical fixture pair", function()
+function TestAnalysis:test_finds_the_structurally_identical_fixture_pair()
   local candidates = analysis.find_duplicates({ paths = { FIXTURES } })
-  assert_eq(#candidates, 1)
-  assert_eq(candidates[1].score, 1)
+  lu.assertEquals(#candidates, 1)
+  lu.assertEquals(candidates[1].score, 1)
   local names = { candidates[1].left.name, candidates[1].right.name }
   table.sort(names)
-  assert_eq(names[1], "calculate_total")
-  assert_eq(names[2], "compute_sum")
-end)
+  lu.assertEquals(names[1], "calculate_total")
+  lu.assertEquals(names[2], "compute_sum")
+end
 
-test("analysis: candidate carries file and line ranges", function()
+function TestAnalysis:test_candidate_carries_file_and_line_ranges()
   local candidates = analysis.find_duplicates({ paths = { FIXTURES } })
   local left = candidates[1].left
-  assert_true(left.file:match("dup_[ab]%.lua$") ~= nil, "left file")
-  assert_eq(left.start_line, 1)
-  assert_eq(left.end_line, 10)
-end)
+  lu.assertTrue(left.file:match("dup_[ab]%.lua$") ~= nil, "left file")
+  lu.assertEquals(left.start_line, 1)
+  lu.assertEquals(left.end_line, 10)
+end
 
-test("analysis: threshold above 1 yields nothing", function()
+function TestAnalysis:test_threshold_above_1_yields_nothing()
   local candidates = analysis.find_duplicates({
     paths = { FIXTURES },
     threshold = 1.1,
   })
-  assert_eq(#candidates, 0)
-end)
+  lu.assertEquals(#candidates, 0)
+end
 
-test("analysis: min_nodes filters by AST node count", function()
+function TestAnalysis:test_min_nodes_filters_by_ast_node_count()
   local candidates = analysis.find_duplicates({
     paths = { FIXTURES },
     min_nodes = 1000,
   })
-  assert_eq(#candidates, 0)
-end)
+  lu.assertEquals(#candidates, 0)
+end
 
-test("analysis: min_lines filters short functions", function()
+function TestAnalysis:test_min_lines_filters_short_functions()
   local candidates = analysis.find_duplicates({
     paths = { FIXTURES },
     min_lines = 1000,
   })
-  assert_eq(#candidates, 0)
-end)
+  lu.assertEquals(#candidates, 0)
+end
 
-test("analysis: empty directory yields no candidates", function()
+function TestAnalysis:test_empty_directory_yields_no_candidates()
   local candidates = analysis.find_duplicates({ paths = { ROOT .. "/tests" } })
   for _, candidate in ipairs(candidates) do
-    assert_true(candidate.score >= 0.82, "score above threshold")
+    lu.assertTrue(candidate.score >= 0.82, "score above threshold")
   end
-end)
+end
 
-test("analysis: nested inner functions match, outer functions do not (overlap fix)", function()
+function TestAnalysis:test_nested_inner_functions_match_outer_do_not()
   local candidates = analysis.find_duplicates({ paths = { ROOT .. "/tests/corpus" } })
   -- Should find the validate/verify inner pair but NOT the outer pair
   -- (process_entries vs handle_records have different structures;
@@ -70,11 +73,11 @@ test("analysis: nested inner functions match, outer functions do not (overlap fi
       outer_found = true
     end
   end
-  assert_true(inner_found, "inner functions validate/verify should match")
-  assert_true(not outer_found, "outer functions should not match (different structure, no child inflation)")
-end)
+  lu.assertTrue(inner_found, "inner functions validate/verify should match")
+  lu.assertTrue(not outer_found, "outer functions should not match (different structure, no child inflation)")
+end
 
-test("analysis: same-file overlapping entries are excluded from comparison", function()
+function TestAnalysis:test_same_file_overlapping_entries_are_excluded()
   -- Scan corpus which contains nested_a.lua and nested_b.lua. Each has a
   -- parent function and a child function whose line ranges overlap (the
   -- child is nested inside the parent in the same file). The overlap
@@ -103,9 +106,11 @@ test("analysis: same-file overlapping entries are excluded from comparison", fun
     if c.left.file == c.right.file then
       local overlap = c.left.start_line <= c.right.end_line
           and c.right.start_line <= c.left.end_line
-      assert_true(not overlap,
+      lu.assertTrue(not overlap,
         "overlapping same-file entries should not produce a candidate: "
         .. c.left.name .. " vs " .. c.right.name)
     end
   end
-end)
+end
+
+return TestAnalysis

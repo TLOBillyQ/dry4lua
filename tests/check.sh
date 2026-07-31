@@ -8,10 +8,13 @@ LUA=${LUA:-$LUADIR/lua5.4}
 LUAC=${LUAC:-$LUADIR/luac5.4}
 LUACHECK_DIR=${LUACHECK_DIR:-/opt/homebrew/Cellar/luacheck/1.2.0_1/libexec/share/lua/5.4}
 
+# luarocks (Lua 5.4 tree) provides luaunit (and luacheck if not from Homebrew).
+LUAROCKS_DIR="$HOME/.luarocks/share/lua/5.4"
+LUA_PATH="$LUAROCKS_DIR/?.lua;$LUAROCKS_DIR/?/init.lua;$($LUA -e 'print(package.path)')"
 if [ -d "$LUACHECK_DIR" ]; then
-  LUA_PATH="$LUACHECK_DIR/?.lua;$LUACHECK_DIR/?/init.lua;$($LUA -e 'print(package.path)')"
-  export LUA_PATH
+  LUA_PATH="$LUACHECK_DIR/?.lua;$LUACHECK_DIR/?/init.lua;$LUA_PATH"
 fi
+export LUA_PATH
 
 $LUA tests/run.lua
 

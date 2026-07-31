@@ -118,7 +118,13 @@ DUPLICATE score=0.89
 luarocks install luacheck
 ```
 
-运行测试套件：
+安装测试依赖（测试套件基于 luaunit，见 ADR-0005）：
+
+```
+luarocks install luaunit
+```
+
+运行测试套件（发现 `tests/test_*.lua`，经 luaunit 执行）：
 
 ```
 lua5.4 tests/run.lua

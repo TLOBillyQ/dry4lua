@@ -1,4 +1,7 @@
--- Minimal test runner for dry4lua. Usage: lua5.4 tests/run.lua
+-- luaunit test runner for dry4lua (ADR-0005). Usage: lua5.4 tests/run.lua
+-- Discovers tests/test_*.lua (fixtures/corpus/baseline are test data, not
+-- suites; bench.lua is not a test file), loads each file, and runs the
+-- returned luaunit test tables as a single suite.
 local script = arg[0] or "tests/run.lua"
 ROOT = script:match("^(.+)/tests/run%.lua$") or "."
 package.path = ROOT .. "/lib/?.lua;" .. package.path
@@ -8,45 +11,50 @@ if luacheck_dir then
   package.path = luacheck_dir .. "/?.lua;" .. luacheck_dir .. "/?/init.lua;" .. package.path
 end
 
-local passed = 0
-local failed = 0
-local failures = {}
+local lu = require("luaunit")
 
-function test(name, fn)
-  local ok, err = pcall(fn)
-  if ok then
-    passed = passed + 1
-  else
-    failed = failed + 1
-    failures[#failures + 1] = name .. ": " .. tostring(err)
+local function shell_quote(text)
+  return "'" .. tostring(text):gsub("'", "'\\''") .. "'"
+end
+
+local function discover_test_files()
+  local files = {}
+  local pipe = io.popen("find " .. shell_quote(ROOT .. "/tests")
+    .. " -name 'test_*.lua' -type f"
+    .. " -not -path '*/fixtures/*'"
+    .. " -not -path '*/corpus/*'"
+    .. " -not -path '*/baseline/*' 2>/dev/null")
+  for line in pipe:lines() do
+    files[#files + 1] = line
   end
+  pipe:close()
+  table.sort(files)
+  return files
 end
 
-function assert_eq(actual, expected, label)
-  if actual ~= expected then
-    error((label or "assert_eq")
-      .. ": expected " .. tostring(expected)
-      .. ", got " .. tostring(actual), 2)
+local function suite_name_for(path)
+  local base = tostring(path):match("([^/]+)%.lua$") or tostring(path)
+  return (base:gsub("[^%w_]", "_"))
+end
+
+local instances = {}
+for _, file in ipairs(discover_test_files()) do
+  local chunk, load_err = loadfile(file)
+  if chunk == nil then
+    io.stderr:write("cannot load test file " .. file .. ": " .. tostring(load_err) .. "\n")
+    os.exit(1)
   end
-end
-
-function assert_true(value, label)
-  if not value then
-    error((label or "assert_true") .. ": expected truthy value", 2)
+  local ok, suite = pcall(chunk)
+  if not ok then
+    io.stderr:write("test file " .. file .. " failed to load: " .. tostring(suite) .. "\n")
+    os.exit(1)
   end
+  if type(suite) ~= "table" then
+    io.stderr:write("test file " .. file .. " must return a luaunit test table\n")
+    os.exit(1)
+  end
+  instances[#instances + 1] = { suite_name_for(file), suite }
 end
 
-local suites = {
-  "tests/test_ast.lua",
-  "tests/test_analysis.lua",
-  "tests/test_cli.lua",
-}
-for _, suite in ipairs(suites) do
-  dofile(ROOT .. "/" .. suite)
-end
-
-print(string.format("%d passed, %d failed", passed, failed))
-for _, message in ipairs(failures) do
-  print("FAIL " .. message)
-end
-os.exit(failed == 0 and 0 or 1)
+local runner = lu.LuaUnit.new()
+os.exit(runner:runSuiteByInstancesNoCmdLineParsing(instances) > 0 and 1 or 0)
