@@ -15,6 +15,38 @@ Lua equivalent of [dry4go](https://github.com/unclebob/dry4go) and [dry4clj](htt
 
 Size-based pruning eliminates ~80% of pairs before Jaccard comparison.
 
+## Upstream Alignment (对齐上游)
+
+`dry4lua` follows the "Lua faithful implementation of the upstream spec"
+doctrine: whatever dry4clj / dry4go / dry4java do identically is the spec and
+is copied verbatim; anything different is a deliberate deviation, recorded
+here with its reason. Cross-repo decisions live as ADRs in the luatools notes
+repo (`projects/luatools/docs/adr/`).
+
+**Aligned invariants (对齐不变量)**
+
+- Default parameters `threshold 0.82 / min-lines 4 / min-nodes 20` and the
+  option set.
+- Fingerprints = the set of serialized normalized subtrees; similarity =
+  Jaccard. (Landing in progress on this branch: replacing the original
+  sliding-window 3-7 fingerprints, the only fingerprint-strategy deviation
+  across all upstream versions — ADR-0001. Requires a real Lua AST, which is
+  why luacheck becomes a runtime dependency via LuaRocks.)
+- Detection unit = function scope (structurally identical to dry4go's
+  `FuncDecl`).
+- Text output skeleton (`DUPLICATE score=%.2f` + two `file:start-end` lines,
+  `No duplicate candidates found.` when empty) and exit code 2 on unknown
+  format.
+- Normalization keeps operators/keywords in the tag while stripping
+  identifiers and literals (closest to dry4go).
+
+**Deliberate deviations (有意偏离)**
+
+- JSON output with a function `name` field (dry4go also emits JSON; clj/java
+  emit EDN) — CI/tooling consumption.
+- Extra `--limit` option for text output.
+- File collection delegates to external `find`.
+
 ## Usage
 
 ```
