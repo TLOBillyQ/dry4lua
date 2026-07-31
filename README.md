@@ -16,6 +16,11 @@ Lua equivalent of [dry4go](https://github.com/unclebob/dry4go) and [dry4clj](htt
 5. Compare all candidate pairs using Jaccard similarity over fingerprint sets
 6. Report pairs that exceed the threshold
 
+Nested functions are collapsed to a `(function)` leaf during normalization so
+that a parent function's fingerprints do not include the child's body details,
+and same-file entries whose line ranges overlap (a parent and its nested child)
+are excluded from pairwise comparison, matching dry4java's `overlaps` semantics.
+
 Size-based pruning eliminates ~80% of pairs before Jaccard comparison.
 
 ## Upstream Alignment (对齐上游)

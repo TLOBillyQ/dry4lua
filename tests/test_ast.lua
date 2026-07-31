@@ -148,6 +148,27 @@ test("ast: identical functions produce identical fingerprint sets", function()
   end
 end)
 
+test("ast: nested Function nodes collapse to (function) leaf in parent normalization", function()
+  local chunk = parse("function outer()\n  function inner()\n    return 1\n  end\n  local x = inner()\nend")
+  local funcs = ast.extract_functions(chunk)
+  assert_eq(#funcs, 2)
+  -- Normalize the outer function's node. Nested Function nodes inside
+  -- should be collapsed to (function) leaves so that the outer
+  -- function's fingerprints do not include the inner function's body.
+  local outer_normalized = ast.normalize_node(funcs[1].node)
+  local outer_serialized = ast.serialize(outer_normalized)
+  -- The outer has an (ident) for local x, a (function) leaf for the
+  -- collapsed inner, a (Call (callee) (ident)) for inner(), and a
+  -- (Local ...) wrapper. It must NOT contain a (Return because the
+  -- only return belongs to the collapsed inner function.
+  assert_true(outer_serialized:find("(function)", 1, true) ~= nil, "collapsed function leaf present")
+  assert_true(outer_serialized:find("(Return", 1, true) == nil, "inner Return not present in parent")
+  -- The inner function's own normalization should still contain its body.
+  local inner_normalized = ast.normalize_node(funcs[2].node)
+  local inner_serialized = ast.serialize(inner_normalized)
+  assert_true(inner_serialized:find("(Return", 1, true) ~= nil, "inner Return present in own normalization")
+end)
+
 test("ast: node count includes all tagged AST nodes", function()
   local func = extract("function f(a)\n  local x = 1\nend")[1]
   local count = ast.count_nodes(func.node)

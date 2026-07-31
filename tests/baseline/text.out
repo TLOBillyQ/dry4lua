@@ -1,3 +1,7 @@
 DUPLICATE score=1.00
+  tests/corpus/nested_a.lua:2-20  validate
+  tests/corpus/nested_b.lua:2-20  verify
+
+DUPLICATE score=1.00
   tests/fixtures/dup_a.lua:1-10  calculate_total
   tests/fixtures/dup_b.lua:1-10  compute_sum

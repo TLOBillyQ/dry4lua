@@ -140,9 +140,19 @@ local function normalized_tag(node)
   return node.tag
 end
 
-function ast.normalize_node(node)
+function ast.normalize_node(node, collapse_nested_functions)
   if type(node) ~= "table" then
     return node
+  end
+
+  -- When recursing into a function body, collapse nested Function nodes
+  -- to a leaf so that parent-function fingerprints do not include
+  -- child-function body details. This prevents double-reporting when
+  -- both a parent pair and a child pair match the same similarity
+  -- targets (the parent match would be a side-effect of the child's
+  -- fingerprints, not the parent's own structure).
+  if collapse_nested_functions and node.tag == "Function" then
+    return { tag = "function" }
   end
 
   local tag = node.tag
@@ -150,7 +160,7 @@ function ast.normalize_node(node)
   if not tag then
     local normalized = {}
     for index = 1, #node do
-      normalized[index] = ast.normalize_node(node[index])
+      normalized[index] = ast.normalize_node(node[index], true)
     end
     return normalized
   end
@@ -170,7 +180,7 @@ function ast.normalize_node(node)
   if tag == "Op" then
     -- operator string becomes part of the tag; operands remain
     for index = 2, #node do
-      normalized[index - 1] = ast.normalize_node(node[index])
+      normalized[index - 1] = ast.normalize_node(node[index], true)
     end
     return normalized
   end
@@ -179,13 +189,13 @@ function ast.normalize_node(node)
     -- callee expression is anonymized; arguments stay
     normalized[1] = { tag = "callee" }
     for index = 2, #node do
-      normalized[index] = ast.normalize_node(node[index])
+      normalized[index] = ast.normalize_node(node[index], true)
     end
     return normalized
   end
 
   for index = 1, #node do
-    normalized[index] = ast.normalize_node(node[index])
+    normalized[index] = ast.normalize_node(node[index], true)
   end
   return normalized
 end

@@ -8,6 +8,17 @@ local DEFAULT_OPTIONS = {
   min_nodes = 20,
 }
 
+-- overlaps checks whether two entries' line ranges intersect within the same
+-- file, matching dry4java's JavaDuplicateFinder.Entry.overlaps semantics.
+-- Entries with overlapping ranges (e.g. a parent function and its nested
+-- child) are excluded from pairwise comparison because their fingerprints
+-- are structurally dependent.
+local function overlaps(a, b)
+  return a.file == b.file
+    and a.start_line <= b.end_line
+    and b.start_line <= a.end_line
+end
+
 local function jaccard(fps_a, count_a, fps_b, count_b)
   local small, big = fps_a, fps_b
   if count_a > count_b then
@@ -97,6 +108,9 @@ function analysis.find_duplicates(options)
       if a.fp_count / b.fp_count < threshold then
         break
       end
+      if overlaps(a, b) then
+        goto continue
+      end
       local score = jaccard(a.fingerprints, a.fp_count, b.fingerprints, b.fp_count)
       if score >= threshold then
         candidates[#candidates + 1] = {
@@ -105,6 +119,7 @@ function analysis.find_duplicates(options)
           right = { file = b.file, name = b.name, start_line = b.start_line, end_line = b.end_line },
         }
       end
+      ::continue::
     end
   end
 
