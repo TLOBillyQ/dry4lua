@@ -1,93 +1,87 @@
 # dry4lua
 
-Structural duplication detector for Lua source code.
+Lua 源码的结构性重复检测器。
 
-Lua equivalent of [dry4go](https://github.com/unclebob/dry4go) and [dry4clj](https://github.com/unclebob/dry4clj).
+与 [dry4go](https://github.com/unclebob/dry4go) 和 [dry4clj](https://github.com/unclebob/dry4clj) 对应的 Lua 版本。
 
-## How it works
+## 工作原理（How it works）
 
-1. Parse each Lua source file with [luacheck](https://github.com/lunarmodules/luacheck)
-2. Extract function scopes from the AST
-3. Normalize each function's subtree: identifiers become `ident`, literals become
-   `literal/<KIND>`, function-call callees become `callee`, operators stay in the
-   tag (e.g. `op/add`), and keyword tags are unchanged
-4. Build structural fingerprints as the set of all serialized normalized subtrees
-   (s-expression style: `(tag child1 child2 ...)`)
-5. Compare all candidate pairs using Jaccard similarity over fingerprint sets
-6. Report pairs that exceed the threshold
+1. 使用 [luacheck](https://github.com/lunarmodules/luacheck) 解析每个 Lua 源文件
+2. 从 AST 中提取函数作用域
+3. 对每个函数的子树做归一化：标识符变为 `ident`，字面量变为
+   `literal/<KIND>`，函数调用的被调用者变为 `callee`，运算符保留在
+   标签中（如 `op/add`），关键字标签不变
+4. 构建结构指纹：所有序列化后的归一化子树集合
+   （S 表达式风格：`(tag child1 child2 ...)`）
+5. 对所有候选对做指纹集合的 Jaccard 相似度比较
+6. 报告超过阈值的配对
 
-Nested functions are collapsed to a `(function)` leaf during normalization so
-that a parent function's fingerprints do not include the child's body details,
-and same-file entries whose line ranges overlap (a parent and its nested child)
-are excluded from pairwise comparison, matching dry4java's `overlaps` semantics.
+嵌套函数在归一化期间折叠为 `(function)` 叶节点，这样父函数的指纹
+不会包含子函数的体细节；同一文件中行号范围重叠的条目（父函数和其
+嵌套子函数）从成对比较中排除，对齐 dry4java 的 `overlaps` 语义。
 
-Size-based pruning eliminates ~80% of pairs before Jaccard comparison.
+基于大小的剪枝在 Jaccard 比较前排除了约 80% 的配对。
 
-## Upstream Alignment (对齐上游)
+## 对齐上游（Upstream Alignment）
 
-`dry4lua` follows the "Lua faithful implementation of the upstream spec"
-doctrine: whatever dry4clj / dry4go / dry4java do identically is the spec and
-is copied verbatim; anything different is a deliberate deviation, recorded
-here with its reason. Cross-repo decisions live as ADRs in the luatools notes
-repo (`projects/luatools/docs/adr/`).
+`dry4lua` 遵循"上游规格的 Lua 忠实实现"教义：dry4clj / dry4go / dry4java
+三者一致的部分即为规格，逐字照抄；任何不同均为有意偏离，在此记录并
+附理由。跨仓库决策以 ADR 形式存放在 luatools notes 仓库
+（`projects/luatools/docs/adr/`）。
 
-**Aligned invariants (对齐不变量)**
+**对齐不变量（Aligned invariants）**
 
-- Default parameters `threshold 0.82 / min-lines 4 / min-nodes 20` and the
-  option set.
-- Fingerprints = the set of serialized normalized subtrees; similarity =
-  Jaccard.
-- Detection unit = function scope (structurally identical to dry4go's
-  `FuncDecl`).
-- Text output skeleton (`DUPLICATE score=%.2f` + two `file:start-end` lines,
-  `No duplicate candidates found.` when empty) and exit code 2 on unknown
-  format.
-- Normalization keeps operators/keywords in the tag while stripping
-  identifiers and literals (closest to dry4go).
+- 默认参数 `threshold 0.82 / min-lines 4 / min-nodes 20` 及选项集。
+- 指纹 = 序列化后的归一化子树集合；相似度 = Jaccard。
+- 检测单位 = 函数作用域（结构与 dry4go 的 `FuncDecl` 一致）。
+- 文本输出骨架（`DUPLICATE score=%.2f` + 两行 `file:start-end`，
+  无候选时输出 `No duplicate candidates found.`）以及未知格式时的
+  退出码 2。
+- 归一化将运算符/关键字保留在标签中，同时剥离标识符和字面量（与
+  dry4go 最接近）。
 
-**Deliberate deviations (有意偏离)**
+**有意偏离（Deliberate deviations）**
 
-- JSON output with a function `name` field (dry4go also emits JSON; clj/java
-  emit EDN) — CI/tooling consumption.
-- Extra `--limit` option for text output.
-- File collection delegates to external `find`.
-- Nested functions collapse to a `(function)` leaf inside a parent's
-  fingerprints (in addition to the upstream-aligned `overlaps` pair exclusion).
-  Upstream dry4java leaves child bodies in the parent fingerprint and relies
-  on `overlaps` alone, which can match structurally-different parents that
-  merely share identical inner functions; the collapse prevents that
-  cross-file false positive (see "How it works").
+- JSON 输出带函数 `name` 字段（dry4go 同样输出 JSON；clj/java 输出
+  EDN）—— 供 CI/工具链消费。
+- 文本输出额外提供 `--limit` 选项。
+- 文件收集委托给外部 `find`。
+- 嵌套函数在父级指纹中折叠为 `(function)` 叶节点（在 upstream-aligned
+  的 `overlaps` 对排除之上额外增加）。上游 dry4java 将子函数体留在
+  父级指纹中，仅依赖 `overlaps`，这可能使结构不同的父级仅因为共享
+  相同的内部函数而被匹配；折叠消除了这种跨文件误报（参见"工作原理"）。
 
-## Usage
+## 用法（Usage）
 
 ```
 bin/dry4lua [options] [file-or-directory ...]
 lua5.4 bin/dry4lua [options] [file-or-directory ...]
 ```
 
-`bin/dry4lua` is a self-contained entrypoint: it only sets `package.path`
-to the repository's `lib/` and calls `dry4lua.cli`. Project tooling
-standardizes on Lua 5.4 for this repository.
+`bin/dry4lua` 是一个自包含的入口点：它只将 `package.path` 设置为
+仓库的 `lib/`，然后调用 `dry4lua.cli`。本项目工具链统一使用
+Lua 5.4。
 
-## Using dry4lua in a new project
+## 在新项目中使用（Using dry4lua in a new project）
 
-1. Install luacheck (runtime dependency):
+1. 安装 luacheck（运行时依赖）：
 
    ```
    luarocks install luacheck
    ```
 
-2. Vendor the repository into your project, e.g. as a git submodule or a
-   pinned toolcache checkout at `eggy/vendor/dry4lua/`.
-3. Run the entrypoint against your sources:
+2. 将本仓库引入你的项目，如作为 git submodule 或固定版本的
+   toolcache 检出到 `eggy/vendor/dry4lua/`。
+3. 对你的源码运行入口点：
 
    ```
    lua5.4 vendor/dry4lua/bin/dry4lua src
    ```
 
-   Or put the entrypoint on your `PATH` (`export PATH="$PWD/vendor/dry4lua/bin:$PATH"`)
-   and simply call `dry4lua src`.
-4. Alternatively, use it as a library from your own tooling:
+   或将入口点放到你的 `PATH` 上
+   （`export PATH="$PWD/vendor/dry4lua/bin:$PATH"`），然后直接调用
+   `dry4lua src`。
+4. 或者，从你自己的工具链中作为库使用：
 
    ```lua
    package.path = "vendor/dry4lua/lib/?.lua;" .. package.path
@@ -95,20 +89,20 @@ standardizes on Lua 5.4 for this repository.
    os.exit(cli.run(arg))
    ```
 
-Options, defaults, and output formats are identical in all three modes.
+三种模式下的选项、默认值和输出格式完全一致。
 
-## Options
+## 选项（Options）
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--threshold N` | 0.82 | Minimum structural similarity score (0.0-1.0) |
-| `--min-lines N` | 4 | Minimum source lines in a candidate function |
-| `--min-nodes N` | 20 | Minimum AST node count in a candidate function |
-| `--limit N` | unlimited | Maximum text duplicate rows to print; `0` means unlimited |
-| `--json` | | Output in JSON format |
-| `--text` | | Output in text format (default) |
+| Flag | 默认值 | 说明 |
+|------|--------|------|
+| `--threshold N` | 0.82 | 结构性相似度的最低阈值 (0.0-1.0) |
+| `--min-lines N` | 4 | 候选函数的最少源码行数 |
+| `--min-nodes N` | 20 | 候选函数的最少 AST 节点数 |
+| `--limit N` | 无限制 | 文本输出最多打印的重复行数；`0` 表示无限制 |
+| `--json` | | 以 JSON 格式输出 |
+| `--text` | | 以文本格式输出（默认） |
 
-## Output
+## 输出（Output）
 
 ```
 DUPLICATE score=0.89
@@ -116,35 +110,34 @@ DUPLICATE score=0.89
   src/gameplay/movement.lua:30-44  advance_player
 ```
 
-## Development
+## 开发（Development）
 
-Install the runtime dependency:
+安装运行时依赖：
 
 ```
 luarocks install luacheck
 ```
 
-Run the test suite:
+运行测试套件：
 
 ```
 lua5.4 tests/run.lua
 ```
 
-Run the full behavior check — unit tests, CLI output diff against the
-baseline in `tests/baseline/`, and a syntax check of all sources:
+运行完整行为检查——单元测试、与 `tests/baseline/` 中基准的 CLI
+输出差异对比，以及所有源文件的语法检查：
 
 ```
 sh tests/check.sh
 ```
 
-Run the benchmark (repeated `find_duplicates` over the frozen corpus in
-`tests/corpus/` and `tests/fixtures/`):
+运行基准测试（在 `tests/corpus/` 和 `tests/fixtures/` 中的冻结
+语料上反复执行 `find_duplicates`）：
 
 ```
 lua5.4 tests/bench.lua 500
 ```
 
-The baseline captures the CLI output of the implementation on the frozen
-corpus. It was regenerated when the fingerprint strategy moved from token
-sliding-windows to serialized normalized AST subtrees; in this corpus the
-reported duplicate pair and score remained identical.
+基准文件记录了实现代码在冻结语料上的 CLI 输出。当指纹策略从
+token 滑动窗口切换到序列化归一化 AST 子树时重新生成；在该语料
+中，报告的重复对和得分保持不变。
