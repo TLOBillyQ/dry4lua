@@ -4,7 +4,7 @@
 -- returned luaunit test tables as a single suite.
 local script = arg[0] or "tests/run.lua"
 ROOT = script:match("^(.+)/tests/run%.lua$") or "."
-package.path = ROOT .. "/lib/?.lua;" .. package.path
+package.path = ROOT .. "/src/?.lua;" .. package.path
 
 local luacheck_dir = os.getenv("LUACHECK_DIR")
 if luacheck_dir then

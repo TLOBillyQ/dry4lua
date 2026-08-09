@@ -27,6 +27,6 @@ $LUA bin/dry4lua --json tests/corpus tests/fixtures > "$JSON_OUT"
 diff tests/baseline/text.out "$TEXT_OUT"
 diff tests/baseline/json.out "$JSON_OUT"
 
-$LUAC -p lib/dry4lua/*.lua bin/dry4lua tests/*.lua tests/fixtures/*.lua tests/corpus/*.lua
+$LUAC -p src/dry4lua/*.lua bin/dry4lua tests/*.lua tests/fixtures/*.lua tests/corpus/*.lua
 
 echo "CHECK OK"

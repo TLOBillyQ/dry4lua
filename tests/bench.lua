@@ -3,7 +3,7 @@
 -- Usage: lua5.4 tests/bench.lua [iterations]   (run from the repository root)
 local script = arg[0] or "tests/bench.lua"
 local root = script:match("^(.+)/tests/bench%.lua$") or "."
-package.path = root .. "/lib/?.lua;" .. package.path
+package.path = root .. "/src/?.lua;" .. package.path
 
 local analysis = require("dry4lua.analysis")
 

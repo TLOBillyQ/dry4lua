@@ -59,7 +59,7 @@ lua5.4 bin/dry4lua [options] [file-or-directory ...]
 ```
 
 `bin/dry4lua` 是一个自包含的入口点：它只将 `package.path` 设置为
-仓库的 `lib/`，然后调用 `dry4lua.cli`。本项目工具链统一使用
+仓库的 `src/`，然后调用 `dry4lua.cli`。本项目工具链统一使用
 Lua 5.4。
 
 ## 在新项目中使用（Using dry4lua in a new project）
@@ -84,7 +84,7 @@ Lua 5.4。
 4. 或者，从你自己的工具链中作为库使用：
 
    ```lua
-   package.path = "vendor/dry4lua/lib/?.lua;" .. package.path
+   package.path = "vendor/dry4lua/src/?.lua;" .. package.path
    local cli = require("dry4lua.cli")
    os.exit(cli.run(arg))
    ```

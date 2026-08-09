@@ -1,9 +1,9 @@
 rockspec_format = "3.0"
 package = "dry4lua"
-version = "0.1.0-1"
+version = "0.1.1-1"
 source = {
    url = "git+http://lzxsvn:3000/qinyuanj/dry4lua.git",
-   tag = "v0.1.0",
+   tag = "v0.1.1",
 }
 description = {
    summary = "Structural duplication detector for Lua",
@@ -25,9 +25,9 @@ test_dependencies = {
 build = {
    type = "builtin",
    modules = {
-      ["dry4lua.cli"] = "lib/dry4lua/cli.lua",
-      ["dry4lua.analysis"] = "lib/dry4lua/analysis.lua",
-      ["dry4lua.ast"] = "lib/dry4lua/ast.lua",
+      ["dry4lua.cli"] = "src/dry4lua/cli.lua",
+      ["dry4lua.analysis"] = "src/dry4lua/analysis.lua",
+      ["dry4lua.ast"] = "src/dry4lua/ast.lua",
    },
    install = {
       bin = {
