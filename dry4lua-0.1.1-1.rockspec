@@ -2,7 +2,7 @@ rockspec_format = "3.0"
 package = "dry4lua"
 version = "0.1.1-1"
 source = {
-   url = "git+http://lzxsvn:3000/qinyuanj/dry4lua.git",
+   url = "git+http://lzxsvn:3000/eggy/dry4lua.git",
    tag = "v0.1.1",
 }
 description = {
@@ -12,7 +12,7 @@ description = {
       subtrees and comparing fingerprint sets with Jaccard similarity. It is
       the Lua port of unclebob's dry4clj / dry4go / dry4java tools.
    ]],
-   homepage = "http://lzxsvn:3000/qinyuanj/dry4lua",
+   homepage = "http://lzxsvn:3000/eggy/dry4lua",
    license = "MIT",
 }
 dependencies = {
